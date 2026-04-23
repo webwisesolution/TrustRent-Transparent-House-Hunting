@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TrustRent | Transparent House Hunting</title>
+    <!-- Leaflet CSS + JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js for price history -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome 6 (free icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f4f7fc;
+            color: #1e2a3e;
+        }
+
+        /* Trust & transparency header */
+        .trust-header {
+            background: #0f2b3d;
+            color: white;
+            padding: 1.2rem 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .header-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .logo h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .logo span {
+            color: #4bc0c0;
+            font-size: 0.8rem;
+            font-weight: normal;
+            display: block;
+        }
+        .trust-badge {
+            background: #2c5f2d;
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .trust-badge i {
+            margin-right: 6px;
+        }
+        .report-center {
+            background: rgba(255,255,240,0.15);
+            border-radius: 30px;
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        /* main layout */
+        .app-container {
+            max-width: 1600px;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* control bar */
+        .control-panel {
+            background: white;
+            border-radius: 28px;
+            padding: 1rem 1.8rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .search-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-group input, .commute-group input {
+            padding: 10px 16px;
+            border-radius: 40px;
+            border: 1px solid #cddfe7;
+            background: #fefefe;
+            width: 240px;
+            font-size: 0.9rem;
+        }
+        button {
+            background: #1e5f6e;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button i {
+            font-size: 0.9rem;
+        }
+        button:hover {
+            background: #0f4452;
+            transform: scale(0.97);
+        }
+        .outline-btn {
+            background: #e9f0f3;
+            color: #1e5f6e;
+            border: 1px solid #bdd4db;
+        }
+        .outline-btn:hover {
+            background: #cfdfe6;
+        }
+
+        /* Two column layout */
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .listings-panel {
+            flex: 1.2;
+            min-width: 280px;
+            background: transparent;
+            border-radius: 24px;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+        .map-panel {
+            flex: 2;
+            min-width: 320px;
+            background: #eef2f5;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            height: 68vh;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* listing card */
+        .listing-card {
+            background: white;
+            border-radius: 24px;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: 0.2s;
+            border-left: 5px solid #2c9c6e;
+        }
+        .listing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .verified-badge {
+            background: #dff6f0;
+            color: #1b6b4c;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .price {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #1e4663;
+        }
+        .price small {
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+        .address {
+            color: #4a627a;
+            margin: 8px 0;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .details {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 12px 0;
+            font-size: 0.8rem;
+            color: #2c3e50;
+        }
+        .card-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 0.75rem;
+            background: #f0f4f8;
+            color: #1e4663;
+        }
+        .btn-danger {
+            background: #fce9e9;
+            color: #b33;
+        }
+        .btn-danger:hover {
+            background: #f3d5d5;
+            color: #a00;
+        }
+        .commute-chip {
+            background: #eef2fa;
+            border-radius: 30px;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        hr {
+            margin: 12px 0;
+            border-color: #edf2f7;
+        }
+        .no-listings {
+            background: white;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 28px;
+        }
+        .toast-msg {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e2a3e;
+            color: white;
+            padding: 12px 22px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: 0.2s;
+        }
+        @media (max-width: 750px) {
+            .dashboard {
+                flex-direction: column;
+            }
+            .map-panel {
+                height: 380px;
+            }
+            .listings-panel {
+                max-height: 50vh;
+            }
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 1.5rem;
+            color: #5a6e7c;
+        }
+    </style>
+</head>
+<body>
+<div class="trust-header">
+    <div class="header-container">
+        <div class="logo">
+            <h1>🏡 TrustRent <span>no fakes · total transparency</span></h1>
+        </div>
+        <div class="trust-badge"><i class="fas fa-shield-alt"></i> 100% Verified Listings Only</div>
+        <div class="report-center"><i class="fas fa-flag-checkered"></i> Scam reporting system active</div>
+    </div>
+</div>
+
+<div class="app-container">
+    <!-- control row: map-based search + commute time -->
+    <div class="control-panel">
+        <div class="search-group">
+            <input type="text" id="locationSearchInput" placeholder="🔍 Search city/area... (map)">
+            <button id="searchLocationBtn"><i class="fas fa-map-marker-alt"></i> Move map</button>
+            <button id="filterMapBoundsBtn" class="outline-btn"><i class="fas fa-draw-polygon"></i> Search this map area</button>
+            <button id="resetListingsBtn" class="outline-btn"><i class="fas fa-sync-alt"></i> Reset all</button>
+        </div>
+        <div class="commute-group">
+            <input type="text" id="workAddressInput" placeholder="🏢 Your work address for commute">
+            <button id="setCommuteBtn"><i class="fas fa-car-side"></i> Set & show commute times</button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- left: listings with price history & report scam -->
+        <div class="listings-panel" id="listingsContainer">
+            <!-- dynamic cards -->
+            <div class="no-listings">Loading verified properties...</div>
+        </div>
+        <!-- right: map based search -->
+        <div class="map-panel">
+            <div id="map"></div>
+        </div>
+    </div>
+    <footer>
+        <i class="fas fa-chart-line"></i> Price history per location | <i class="fas fa-clock"></i> Commute estimates (car, ~30km/h) | 
+        <i class="fas fa-flag"></i> "Report Scam" triggers instant alert & investigation
+    </footer>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // MOCK DATA – all verified listings only (100% trust)
+    // each includes price history (6 months) + coordinates
+    // --------------------------------------------------------------
+    const listingsData = [
+        {
+            id: 1,
+            title: "Modern 1BR in SoMa",
+            address: "500 4th St, San Francisco, CA",
+            lat: 37.7775,
+            lng: -122.4047,
+            price: 3200,
+            sqft: 750,
+            bedrooms: 1,
+            deposit: 3200,
+            utilities: "Water & trash incl.",
+            verified: true,
+            priceHistory: [3000, 3100, 3150, 3200, 3250, 3200], // last 6 months
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        },
+        {
+            id: 2,
+            title: "Cozy Studio Mission",
+            address: "2800 Mission St, San Francisco, CA",
+            lat: 37.7624,
+            lng: -122.4219,
+            price: 2400,
+            sqft: 500,
+            bedrooms: 0,
+            deposit: 2400,
+            utilities: "Electric separate",
+            verified: true,
+            priceHistory: [2200, 2250, 2300, 2350, 2400, 2400],
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        },
+        {
+            id: 3,
+            title: "2BR NoPa Victorian",
+            address: "800 Divisadero St, San Francisco, CA",
+            lat: 37.7700,
+            lng: -122.4475,
+            price: 4200,
+            sqft: 1150,
+            bedrooms: 2,
+            deposit: 4200,
+            utilities: "Gas & water incl.",
+            verified: true,
+            priceHistory: [4000, 4100, 4150, 4200, 4250, 4300],
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        },
+        {
+            id: 4,
+            title: "Luxury Downtown View",
+            address: "1 Market St, San Francisco, CA",
+            lat: 37.7749,
+            lng: -122.4194,
+            price: 5000,
+            sqft: 1250,
+            bedrooms: 2,
+            deposit: 5000,
+            utilities: "Included",
+            verified: true,
+            priceHistory: [4800, 4900, 4950, 5000, 5000, 5100],
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        },
+        {
+            id: 5,
+            title: "Affordable Richmond District",
+            address: "5500 Geary Blvd, San Francisco, CA",
+            lat: 37.7691,
+            lng: -122.4859,
+            price: 2800,
+            sqft: 720,
+            bedrooms: 1,
+            deposit: 2800,
+            utilities: "Water incl.",
+            verified: true,
+            priceHistory: [2650, 2700, 2750, 2800, 2850, 2900],
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        },
+        {
+            id: 6,
+            title: "Potrero Hill Loft",
+            address: "900 Connecticut St, San Francisco, CA",
+            lat: 37.7577,
+            lng: -122.3927,
+            price: 3500,
+            sqft: 980,
+            bedrooms: 1,
+            deposit: 3500,
+            utilities: "Electric & internet extra",
+            verified: true,
+            priceHistory: [3300, 3400, 3450, 3500, 3500, 3550],
+            historyMonths: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
+        }
+    ];
+
+    // global state
+    let map;
+    let markers = [];
+    let currentListings = [...listingsData];
+    let workplaceCoords = null;   // {lat, lng}
+    let chartModalActive = null;   // For price history chart
+
+    // Helper: show floating toast
+    function showToast(message, isError = false) {
+        const existingToast = document.querySelector('.toast-msg');
+        if(existingToast) existingToast.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast-msg';
+        toast.style.backgroundColor = isError ? '#b91c1c' : '#1e5f6e';
+        toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+    }
+
+    // Helper: compute driving time (minutes) between two lat/lng (haversine, 30km/h)
+    function computeDriveMinutes(lat1, lng1, lat2, lng2) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        const avgSpeedKmph = 30; // urban driving
+        const minutes = (distance / avgSpeedKmph) * 60;
+        return Math.round(minutes);
+    }
+
+    // Update all listing cards with commute times if workplaceCoords exists
+    function refreshCommuteTimes() {
+        if (!workplaceCoords) {
+            // remove commute chips or show none
+            document.querySelectorAll('.commute-chip').forEach(chip => chip.remove());
+            return;
+        }
+        for (let listing of currentListings) {
+            const minutes = computeDriveMinutes(workplaceCoords.lat, workplaceCoords.lng, listing.lat, listing.lng);
+            const chipDiv = document.getElementById(`commute-${listing.id}`);
+            if (chipDiv) {
+                chipDiv.innerHTML = `<i class="fas fa-clock"></i> ${minutes} min drive (work)`;
+            }
+        }
+    }
+
+    // Render listings on left panel (cards) + commute times if workplace active
+    function renderListingCards() {
+        const container = document.getElementById('listingsContainer');
+        if (!currentListings.length) {
+            container.innerHTML = '<div class="no-listings"><i class="fas fa-building"></i> No properties in current area. Reset or zoom out.</div>';
+            return;
+        }
+        container.innerHTML = '';
+        currentListings.forEach(listing => {
+            const card = document.createElement('div');
+            card.className = 'listing-card';
+            const pricePerSqft = (listing.price / listing.sqft).toFixed(2);
+            const verifiedHtml = `<span class="verified-badge"><i class="fas fa-check-circle"></i> VERIFIED · No hidden fees</span>`;
+            const commuteHtml = workplaceCoords ? 
+                `<div id="commute-${listing.id}" class="commute-chip"><i class="fas fa-car"></i> Calculating...</div>` : 
+                `<div class="commute-chip"><i class="fas fa-map-pin"></i> Set work address</div>`;
+            
+            card.innerHTML = `
+                <div class="listing-header">
+                    <div><strong>${listing.title}</strong> ${verifiedHtml}</div>
+                    <div class="price">$${listing.price.toLocaleString()}<small>/mo</small></div>
+                </div>
+                <div class="address"><i class="fas fa-location-dot"></i> ${listing.address}</div>
+                <div class="details">
+                    <span><i class="fas fa-ruler-combined"></i> ${listing.sqft} sqft</span>
+                    <span><i class="fas fa-bed"></i> ${listing.bedrooms} BR</span>
+                    <span><i class="fas fa-dollar-sign"></i> $${pricePerSqft}/sqft</span>
+                    <span><i class="fas fa-shield"></i> deposit: $${listing.deposit}</span>
+                </div>
+                <div class="details" style="background:#f9fafb; border-radius: 20px; padding: 5px 0;">
+                    <span><i class="fas fa-water"></i> ${listing.utilities}</span>
+                </div>
+                <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap;">
+                    ${commuteHtml}
+                </div>
+                <hr>
+                <div class="card-actions">
+                    <button class="btn-sm price-history-btn" data-id="${listing.id}"><i class="fas fa-chart-simple"></i> Price history</button>
+                    <button class="btn-sm btn-danger report-scam-btn" data-id="${listing.id}" data-title="${listing.title}"><i class="fas fa-flag-triangle"></i> Report scam</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        // attach price history event listeners
+        document.querySelectorAll('.price-history-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(btn.dataset.id);
+                const listing = listingsData.find(l => l.id === id);
+                if (listing) showPriceHistoryModal(listing);
+            });
+        });
+        document.querySelectorAll('.report-scam-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(btn.dataset.id);
+                const title = btn.dataset.title;
+                // "Report scam" system feature - full transparency
+                showToast(`🚨 Scam report submitted for "${title}". Our trust & safety team will review within 2h.`, false);
+                // Additional optional: log to console for demonstration
+                console.log(`[SCAM REPORT] listing ID: ${id}, Title: ${title} - reported at ${new Date().toLocaleString()}`);
+                // could notify admin, but robust frontend alert
+            });
+        });
+        // after render cards, refresh commute chips if workplace exists
+        if (workplaceCoords) {
+            refreshCommuteTimes();
+        } else {
+            // make sure all chips have default text
+            currentListings.forEach(l => {
+                const chip = document.getElementById(`commute-${l.id}`);
+                if(chip) chip.innerHTML = `<i class="fas fa-map-pin"></i> Set work address for commute`;
+            });
+        }
+    }
+
+    // Price history modal with Chart.js per location
+    let currentChart = null;
+    function showPriceHistoryModal(listing) {
+        // remove existing modal if any
+        const existingModal = document.getElementById('priceHistoryModal');
+        if(existingModal) existingModal.remove();
+
+        const modalDiv = document.createElement('div');
+        modalDiv.id = 'priceHistoryModal';
+        modalDiv.style.position = 'fixed';
+        modalDiv.style.top = '0'; modalDiv.style.left = '0';
+        modalDiv.style.width = '100%'; modalDiv.style.height = '100%';
+        modalDiv.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        modalDiv.style.display = 'flex';
+        modalDiv.style.alignItems = 'center';
+        modalDiv.style.justifyContent = 'center';
+        modalDiv.style.zIndex = '3000';
+        modalDiv.style.backdropFilter = 'blur(3px)';
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.background = 'white';
+        modalContent.style.borderRadius = '32px';
+        modalContent.style.width = '90%';
+        modalContent.style.maxWidth = '500px';
+        modalContent.style.padding = '1.5rem';
+        modalContent.style.boxShadow = '0 20px 35px rgba(0,0,0,0.2)';
+        modalContent.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3><i class="fas fa-chart-line"></i> Rent history: ${listing.title}</h3>
+                <button id="closeModalBtn" style="background: #cbd5e1; padding: 6px 14px;">✖ Close</button>
+            </div>
+            <p style="margin-top: 8px;">📍 ${listing.address} — verified price trends (last 6 months)</p>
+            <canvas id="priceChartCanvas" width="400" height="250" style="margin-top: 16px;"></canvas>
+            <div style="background:#f1f5f9; border-radius: 20px; padding: 12px; margin-top: 18px;">
+                <i class="fas fa-info-circle"></i> <strong>Transparent data:</strong> No hidden fees. All costs disclosed (deposit, utilities).
+                <div><small>Monthly rent + current fees = total ${listing.price + (listing.utilities.includes('extra') ? 90 : 0)} (est.)</small></div>
+            </div>
+        `;
+        modalDiv.appendChild(modalContent);
+        document.body.appendChild(modalDiv);
+        
+        // draw Chart
+        const ctx = document.getElementById('priceChartCanvas').getContext('2d');
+        if (currentChart) currentChart.destroy();
+        currentChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: listing.historyMonths,
+                datasets: [{
+                    label: 'Monthly Rent ($)',
+                    data: listing.priceHistory,
+                    borderColor: '#2c9c6e',
+                    backgroundColor: 'rgba(44,156,110,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#1e5f6e',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    tooltip: { callbacks: { label: (ctx) => `$${ctx.raw} USD` } }
+                }
+            }
+        });
+        document.getElementById('closeModalBtn').onclick = () => modalDiv.remove();
+        modalDiv.addEventListener('click', (e) => { if(e.target === modalDiv) modalDiv.remove(); });
+    }
+
+    // Map initialization (leaflet)
+    function initMap() {
+        map = L.map('map').setView([37.7749, -122.4194], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 18
+        }).addTo(map);
+        addMarkersToMap(currentListings);
+    }
+
+    function addMarkersToMap(listingsArr) {
+        // clear existing markers
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+        listingsArr.forEach(listing => {
+            const popupContent = `
+                <b>${listing.title}</b><br>
+                <i class="fas fa-map-marker-alt"></i> ${listing.address}<br>
+                💰 $${listing.price}/mo<br>
+                <span style="color:#2b6e4f;">✓ Verified</span><br>
+                <button id="popupReportBtn-${listing.id}" style="background:#f0f2f5; border:none; border-radius:20px; padding:4px 12px; margin-top:6px; font-size:12px;">🚨 Report scam</button>
+            `;
+            const marker = L.marker([listing.lat, listing.lng]).addTo(map);
+            marker.bindPopup(popupContent);
+            marker.on('popupopen', () => {
+                const btn = document.getElementById(`popupReportBtn-${listing.id}`);
+                if(btn) btn.onclick = () => {
+                    showToast(`📢 Scam reported for ${listing.title}. Trust team notified.`, false);
+                };
+            });
+            markers.push(marker);
+        });
+    }
+
+    // filter listings by map bounds (map-based search)
+    function filterByMapBounds() {
+        if (!map) return;
+        const bounds = map.getBounds();
+        const filtered = listingsData.filter(listing => bounds.contains([listing.lat, listing.lng]));
+        currentListings = [...filtered];
+        renderListingCards();
+        addMarkersToMap(currentListings);
+        if(filtered.length === 0) showToast("No verified listings in current map view. Try moving map.", false);
+        else showToast(`📍 Found ${filtered.length} verified properties in this area`, false);
+    }
+
+    function resetAllListings() {
+        currentListings = [...listingsData];
+        renderListingCards();
+        addMarkersToMap(currentListings);
+        if (workplaceCoords) refreshCommuteTimes();
+        showToast("All verified listings restored", false);
+        map.setView([37.7749, -122.4194], 12);
+    }
+
+    // geocoding helper (Nominatim)
+    async function geocodeAddress(address) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data && data.length) {
+                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            } else return null;
+        } catch(e) { return null; }
+    }
+
+    // location search & pan map (map based search)
+    async function searchLocationAndMove() {
+        const query = document.getElementById('locationSearchInput').value.trim();
+        if (!query) { showToast("Enter a location (city, zip)", true); return; }
+        const coords = await geocodeAddress(query);
+        if (coords) {
+            map.setView([coords.lat, coords.lng], 13);
+            showToast(`Map centered on "${query}"`, false);
+        } else {
+            showToast("Location not found. Try another name.", true);
+        }
+    }
+
+    // commute time logic: set workplace and update all cards & chips
+    async function setWorkplaceAndUpdateCommutes() {
+        const workAddr = document.getElementById('workAddressInput').value.trim();
+        if (!workAddr) { showToast("Please enter work address", true); return; }
+        const geo = await geocodeAddress(workAddr);
+        if (!geo) { showToast("Could not locate work address.", true); return; }
+        workplaceCoords = { lat: geo.lat, lng: geo.lng };
+        showToast(`Workplace set: ${workAddr}. Commute estimates updated.`, false);
+        // refresh cards commute labels
+        renderListingCards();   // re-render to ensure fresh chips, but keeps events
+        refreshCommuteTimes();
+        // Also update map markers showing optional? Great
+    }
+
+    // event binding & initial rendering
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        renderListingCards();
+        addMarkersToMap(currentListings);
+        
+        // attach buttons
+        document.getElementById('filterMapBoundsBtn').addEventListener('click', filterByMapBounds);
+        document.getElementById('resetListingsBtn').addEventListener('click', resetAllListings);
+        document.getElementById('searchLocationBtn').addEventListener('click', searchLocationAndMove);
+        document.getElementById('setCommuteBtn').addEventListener('click', setWorkplaceAndUpdateCommutes);
+        
+        // optional: if user hits enter for work address
+        document.getElementById('workAddressInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') setWorkplaceAndUpdateCommutes();
+        });
+        document.getElementById('locationSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchLocationAndMove();
+        });
+    });
+</script>
+</body>
+</html>
